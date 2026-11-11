@@ -43,15 +43,16 @@ async function load(){
       +(s.mode==="demo"?" <small>(연습 데이터)</small>":"");
     $("rows").innerHTML=l.map(r=>`<tr><td>${esc(r.station)}</td><td>${esc(r.time.slice(11))}</td>
       <td>${r.pm10??"-"} ${badge(r.pm10_grade)}</td><td>${r.pm25??"-"} ${badge(r.pm25_grade)}</td>
-      <td><button data-st="${esc(r.station)}">1시간 뒤?</button></td></tr>`).join("");
+      <td><button data-st="${esc(r.station)}" data-h="1">1시간 뒤?</button> <button data-st="${esc(r.station)}" data-h="24">내일?</button></td></tr>`).join("");
   }catch(e){$("summary").innerHTML=`<span class="err">서버에 연결할 수 없습니다: ${esc(e)}</span>`}
 }
 $("rows").addEventListener("click",async e=>{
   const st=e.target.dataset.st; if(!st) return;
-  const p=await fetch(API_URL+"/air/predict?station="+encodeURIComponent(st)).then(r=>r.json());
+  const h=e.target.dataset.h||1;
+  const p=await fetch(API_URL+"/air/predict?hours="+h+"&station="+encodeURIComponent(st)).then(r=>r.json());
   $("pred").hidden=false;
   $("pred").innerHTML=p.ready
-    ?`<b>${esc(p.station)}</b> 1시간 뒤 PM10 약 <b>${p.next_pm10}</b> ${badge(p.next_grade)} <small>(평균 오차 ±${p.avg_error})</small>`
+    ?`<b>${esc(p.station)}</b> ${p.hours==24?"내일 이 시간":p.hours+"시간 뒤"} PM10 약 <b>${p.next_pm10}</b> ${badge(p.next_grade)} <small>(평균 오차 ±${p.avg_error})</small>`
     :esc(p.message||p.detail);
 });
 load();
