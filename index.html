@@ -11,8 +11,12 @@
   body{font-family:"Pretendard","Malgun Gothic",sans-serif;color:var(--ink);line-height:1.5;padding:24px 16px 40px;min-height:100vh;
        background:#ffe94d linear-gradient(160deg,#fff3a0 0%,#ffe94d 45%,#ffd21f 100%) fixed}
   main{max-width:640px;margin:auto}
-  h1{font-size:1.05rem;font-weight:700;margin:0 0 10px 4px}
-  .sub{color:#6f6420;font-size:.75rem;margin:0 0 12px 4px;word-break:break-all}
+  .hero{text-align:center;padding:10px 0 22px}
+  .hero .flower{font-size:2.2rem;line-height:1;letter-spacing:6px;filter:drop-shadow(0 2px 3px rgba(150,110,0,.25))}
+  h1{font-size:2.1rem;font-weight:800;letter-spacing:-.5px;margin:6px 0 4px;color:#3a2f00;text-shadow:0 2px 0 rgba(255,255,255,.65)}
+  h1 em{font-style:normal;color:#0f8f55}
+  .tag{color:#6f5a00;font-size:.95rem}
+  .sub{color:#6f6420;font-size:.72rem;margin:-4px 0 12px 4px;word-break:break-all;opacity:.85}
   .card{background:var(--card);border:1px solid var(--line);border-radius:6px;margin-bottom:14px;box-shadow:0 4px 14px rgba(190,150,0,.18)}
   .head{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;font-weight:700}
   .head select{font:inherit;font-weight:400;border:1px solid var(--line);border-radius:6px;padding:3px 8px;background:#fff}
@@ -50,7 +54,7 @@
 </head>
 <body>
 <main>
-  <h1>대기정보</h1>
+  <header class="hero"><div class="flower" aria-hidden="true">🌼🌼🌼</div><h1>제주 <em>미세먼지</em></h1><p class="tag">오늘 제주 하늘은 어떨까요? 🌤️</p></header>
   <p class="sub">공공데이터 → FastAPI 가공 → Supabase 저장 → 화면 · 서버: <code id="api"></code></p>
 
   <div class="card" id="detail">
