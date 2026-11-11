@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>제주 미세먼지</title>
+<style>
+  :root{--bg:#f7f9fb;--card:#fff;--ink:#1c2a33;--mute:#6b7c88;--line:#e6edf2;--brand:#0e7c9b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Pretendard","Malgun Gothic",sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;padding:24px}
+  main{max-width:720px;margin:auto}
+  h1{font-size:1.4rem;color:var(--brand)} .sub{color:var(--mute);font-size:.9rem;margin-bottom:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+  table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}
+  .g{color:#fff;border-radius:6px;padding:1px 8px;font-size:.85rem}
+  button{font:inherit;background:var(--brand);color:#fff;border:0;border-radius:8px;padding:4px 10px;cursor:pointer}
+  .err{color:#d64545} small{color:var(--mute)}
+</style>
+</head>
+<body>
+<main>
+  <h1>제주 미세먼지</h1>
+  <p class="sub">공공데이터 → FastAPI 가공 → Supabase 저장 → 화면 · 서버: <code id="api"></code></p>
+  <div class="card" id="summary">불러오는 중…</div>
+  <div class="card"><table>
+    <thead><tr><th>측정소</th><th>시각</th><th>PM10</th><th>PM2.5</th><th>예측</th></tr></thead>
+    <tbody id="rows"></tbody></table></div>
+  <div class="card" id="pred" hidden></div>
+</main>
+<script src="config.js"></script>
+<script>
+const COLOR={좋음:"#2f80ed",보통:"#27ae60",나쁨:"#f2994a",매우나쁨:"#eb5757"};
+const badge=g=>g?`<span class="g" style="background:${COLOR[g]}">${g}</span>`:"-";
+const $=id=>document.getElementById(id);
+$("api").textContent=window.API_URL;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function load(){
+  try{
+    const [s,l]=await Promise.all([
+      fetch(API_URL+"/air/summary").then(r=>r.json()),
+      fetch(API_URL+"/air/latest").then(r=>r.json())]);
+    $("summary").innerHTML=`측정소 <b>${s.stations}</b>곳 · 평균 PM10 <b>${s.avg_pm10??"-"}</b> ${badge(s.avg_pm10_grade)}`
+      +(s.mode==="demo"?" <small>(연습 데이터)</small>":"");
+    $("rows").innerHTML=l.map(r=>`<tr><td>${esc(r.station)}</td><td>${esc(r.time.slice(11))}</td>
+      <td>${r.pm10??"-"} ${badge(r.pm10_grade)}</td><td>${r.pm25??"-"} ${badge(r.pm25_grade)}</td>
+      <td><button data-st="${esc(r.station)}">1시간 뒤?</button></td></tr>`).join("");
+  }catch(e){$("summary").innerHTML=`<span class="err">서버에 연결할 수 없습니다: ${esc(e)}</span>`}
+}
+$("rows").addEventListener("click",async e=>{
+  const st=e.target.dataset.st; if(!st) return;
+  const p=await fetch(API_URL+"/air/predict?station="+encodeURIComponent(st)).then(r=>r.json());
+  $("pred").hidden=false;
+  $("pred").innerHTML=p.ready
+    ?`<b>${esc(p.station)}</b> 1시간 뒤 PM10 약 <b>${p.next_pm10}</b> ${badge(p.next_grade)} <small>(평균 오차 ±${p.avg_error})</small>`
+    :esc(p.message||p.detail);
+});
+load();
+</script>
+</body>
+</html>
