@@ -49,8 +49,11 @@ async function load(){
 $("rows").addEventListener("click",async e=>{
   const st=e.target.dataset.st; if(!st) return;
   const h=e.target.dataset.h||1;
-  const p=await fetch(API_URL+"/air/predict?hours="+h+"&station="+encodeURIComponent(st)).then(r=>r.json());
-  $("pred").hidden=false;
+  $("pred").hidden=false; $("pred").textContent="예측 중…";
+  $("pred").scrollIntoView({behavior:"smooth",block:"nearest"});
+  let p;
+  try{p=await fetch(API_URL+"/air/predict?hours="+h+"&station="+encodeURIComponent(st)).then(r=>r.json())}
+  catch(err){$("pred").textContent="서버에 연결할 수 없습니다: "+err; return}
   $("pred").innerHTML=p.ready
     ?`<b>${esc(p.station)}</b> ${p.hours==24?"내일 이 시간":p.hours+"시간 뒤"} PM10 약 <b>${p.next_pm10}</b> ${badge(p.next_grade)} <small>(평균 오차 ±${p.avg_error})</small>`
     :esc(p.message||p.detail);
