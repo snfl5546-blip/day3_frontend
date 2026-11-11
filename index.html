@@ -5,59 +5,151 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>제주 미세먼지</title>
 <style>
-  :root{--bg:#ffe94d;--card:#fffdf0;--ink:#2b2a1c;--mute:#6f6420;--line:#f3e07a;--brand:#0e7c9b}
+  :root{--card:#fff;--ink:#222;--mute:#767676;--line:#e8e8e8;--brand:#1a9e5c;
+        --c1:#2f80ed;--c2:#27ae60;--c3:#f2994a;--c4:#eb5757}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:"Pretendard","Malgun Gothic",sans-serif;background:var(--bg) linear-gradient(160deg,#fff3a0 0%,#ffe94d 45%,#ffd21f 100%) fixed;min-height:100vh;color:var(--ink);line-height:1.6;padding:24px}
-  main{max-width:720px;margin:auto}
-  h1{font-size:1.4rem;color:var(--brand)} .sub{color:var(--mute);font-size:.9rem;margin-bottom:16px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 4px 14px rgba(190,150,0,.18)}
-  table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}
-  .g{color:#fff;border-radius:6px;padding:1px 8px;font-size:.85rem}
-  button{font:inherit;background:var(--brand);color:#fff;border:0;border-radius:8px;padding:4px 10px;cursor:pointer}
+  body{font-family:"Pretendard","Malgun Gothic",sans-serif;color:var(--ink);line-height:1.5;padding:24px 16px 40px;min-height:100vh;
+       background:#ffe94d linear-gradient(160deg,#fff3a0 0%,#ffe94d 45%,#ffd21f 100%) fixed}
+  main{max-width:640px;margin:auto}
+  h1{font-size:1.05rem;font-weight:700;margin:0 0 10px 4px}
+  .sub{color:#6f6420;font-size:.75rem;margin:0 0 12px 4px;word-break:break-all}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:6px;margin-bottom:14px;box-shadow:0 4px 14px rgba(190,150,0,.18)}
+  .head{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;font-weight:700}
+  .head select{font:inherit;font-weight:400;border:1px solid var(--line);border-radius:6px;padding:3px 8px;background:#fff}
+  .head .time{margin-left:auto;font-weight:400;font-size:.8rem;color:var(--mute)}
+  .tabs{display:flex;border-bottom:1px solid var(--line)}
+  .tabs button{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:12px 0;font:inherit;color:var(--mute);cursor:pointer}
+  .tabs button.on{color:var(--brand);border-bottom-color:var(--brand);font-weight:700}
+  .now{display:flex;align-items:center;gap:20px;padding:22px 20px;flex-wrap:wrap}
+  .big{display:flex;align-items:center;gap:18px;flex:1;min-width:230px}
+  .num{font-size:3.4rem;font-weight:300;line-height:1}
+  .num small{font-size:1rem;color:var(--mute);font-weight:400;margin-left:4px}
+  .state{font-weight:700;margin-top:6px}
+  .note{font-size:.8rem;color:var(--mute);margin-top:2px}
+  .side{border-left:1px solid var(--line);padding-left:20px;flex:1;min-width:200px;font-size:.9rem}
+  .side div{display:flex;align-items:center;gap:6px;margin:7px 0}
+  .side span.k{width:64px;color:#555}
+  .side b{font-weight:700}
+  .strip{border-top:1px solid var(--line);padding:16px 12px 18px}
+  .strip h2{font-size:.9rem;margin:0 0 10px 8px}
+  .hours{display:flex;gap:0;overflow-x:auto}
+  .hr{flex:1;min-width:64px;text-align:center;font-size:.85rem}
+  .hr .v{font-weight:700;height:22px}
+  .hr .bar{height:60px;display:flex;align-items:flex-end;justify-content:center}
+  .hr .bar i{display:block;width:12px;border-radius:6px 6px 0 0}
+  .hr .t{color:var(--mute);font-size:.8rem;margin-top:4px}
+  .hr.cur .t{background:var(--brand);color:#fff;border-radius:10px;display:inline-block;padding:0 8px}
+  table{width:100%;border-collapse:collapse;font-size:.92rem}
+  th,td{padding:9px 14px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--mute);font-weight:400;font-size:.8rem}
+  tbody tr{cursor:pointer} tbody tr:hover{background:#fffbe0} tr.sel{background:#fff7bf}
+  .g{color:#fff;border-radius:10px;padding:1px 8px;font-size:.78rem;white-space:nowrap}
   .err{color:#d64545} small{color:var(--mute)}
+  @media(max-width:520px){.side{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:12px}.num{font-size:2.8rem}}
 </style>
 </head>
 <body>
 <main>
-  <h1>제주 미세먼지</h1>
+  <h1>대기정보</h1>
   <p class="sub">공공데이터 → FastAPI 가공 → Supabase 저장 → 화면 · 서버: <code id="api"></code></p>
-  <div class="card" id="summary">불러오는 중…</div>
-  <div class="card"><table>
-    <thead><tr><th>측정소</th><th>시각</th><th>PM10</th><th>PM2.5</th><th>예측</th></tr></thead>
-    <tbody id="rows"></tbody></table></div>
-  <div class="card" id="pred" hidden></div>
+
+  <div class="card" id="detail">
+    <div class="head"><span id="title">불러오는 중…</span><select id="pick" aria-label="측정소 선택"></select><span class="time" id="when"></span></div>
+    <div class="tabs"><button class="on" data-tab="now">오늘</button><button data-tab="next">내일</button></div>
+    <div class="now">
+      <div class="big"><div id="face"></div><div><div class="num" id="num">-</div><div class="state" id="state"></div><div class="note" id="note"></div></div></div>
+      <div class="side" id="side"></div>
+    </div>
+    <div class="strip"><h2 id="striptitle">시간대별 미세먼지</h2><div class="hours" id="hours"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="head">제주 전체 측정소 <span class="time" id="summary"></span></div>
+    <table><thead><tr><th>측정소</th><th>시각</th><th>미세먼지</th><th>초미세먼지</th></tr></thead><tbody id="rows"></tbody></table>
+  </div>
 </main>
 <script src="config.js"></script>
 <script>
 const COLOR={좋음:"#2f80ed",보통:"#27ae60",나쁨:"#f2994a",매우나쁨:"#eb5757"};
-const badge=g=>g?`<span class="g" style="background:${COLOR[g]}">${g}</span>`:"-";
 const $=id=>document.getElementById(id);
-$("api").textContent=window.API_URL;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const badge=g=>g?`<span class="g" style="background:${COLOR[g]}">${esc(g)}</span>`:"-";
+const gradePM10=v=>v==null?null:v<=30?"좋음":v<=80?"보통":v<=150?"나쁨":"매우나쁨";
+// 등급별 표정 아이콘 (좋음 웃음 · 보통 무표정 · 나쁨/매우나쁨 찡그림)
+function face(g,size){
+  const c=COLOR[g]||"#bbb", bad=g==="나쁨"||g==="매우나쁨";
+  const mouth=g==="좋음"?"M16 31 Q25 40 34 31":bad?"M16 36 Q25 28 34 36":"M17 33 L33 33";
+  return `<svg width="${size}" height="${size}" viewBox="0 0 50 50" aria-label="${esc(g||"")}"><circle cx="25" cy="25" r="23" fill="${c}"/>
+    <circle cx="17" cy="20" r="3" fill="#fff"/><circle cx="33" cy="20" r="3" fill="#fff"/>
+    <path d="${mouth}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`;
+}
+let LATEST=[], SEL=null, TAB="now", PRED=null;
+$("api").textContent=window.API_URL;
+
+async function api(path){const r=await fetch(window.API_URL+path); if(!r.ok) throw new Error(r.status); return r.json()}
+
+function bars(items){            // items: [{label,value,cur}]
+  const max=Math.max(40,...items.map(i=>i.value??0));
+  $("hours").innerHTML=items.map(i=>{
+    const g=gradePM10(i.value), h=i.value==null?0:Math.max(6,Math.round(i.value/max*58));
+    return `<div class="hr${i.cur?" cur":""}"><div class="v">${i.value??"-"}</div>
+      <div class="bar"><i style="height:${h}px;background:${COLOR[g]||"#ccc"}"></i></div><div class="t">${esc(i.label)}</div></div>`}).join("");
+}
+
+function renderDetail(){
+  const r=LATEST.find(x=>x.station===SEL); if(!r) return;
+  $("title").textContent=r.station; $("when").textContent=r.time.replace("T"," ").slice(0,16)+" 기준";
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===TAB));
+  const p=PRED&&PRED.station===SEL?PRED:null;
+  let val=r.pm10, g=r.pm10_grade, note="";
+  if(TAB==="next"){
+    if(p&&p.ready){val=p.path[p.path.length-1]; g=gradePM10(val);
+      note=p.simple?`간단 추정 · 데이터 ${p.points}개 (쌓일수록 정확해져요)`:`학습 예측 · 평균 오차 ±${p.avg_error}`}
+    else{val=null;g=null;note=p?(p.message||"예측할 수 없어요"):"예측 중…"}
+  }
+  $("face").innerHTML=face(g,84);
+  $("num").innerHTML=val==null?"-":`${val}<small>㎍/㎥</small>`;
+  $("state").innerHTML=g?`${TAB==="next"?"내일 이 시간 · ":""}미세먼지 <span style="color:${COLOR[g]}">${esc(g)}</span>`:"";
+  $("note").textContent=note;
+  const pm25=TAB==="now"?[r.pm25,r.pm25_grade]:[null,null];
+  $("side").innerHTML=`<div><span class="k">미세먼지</span><b>${val??"-"}</b><small>㎍/㎥</small> ${badge(g)} ${g?face(g,18):""}</div>
+    <div><span class="k">초미세먼지</span><b>${pm25[0]??"-"}</b><small>${pm25[0]==null?"":"㎍/㎥"}</small> ${badge(pm25[1])} ${pm25[1]?face(pm25[1],18):""}</div>
+    ${TAB==="next"?'<div class="note">초미세먼지는 예측하지 않아요</div>':""}`;
+  // 시간대별
+  if(TAB==="now"){
+    $("striptitle").textContent="시간대별 미세먼지 (최근)";
+    const rec=(p&&p.recent)||[]; const n=rec.length;
+    bars(n?rec.map((v,i)=>({value:v,label:i===n-1?"현재":`-${n-1-i}시간`,cur:i===n-1})):[{value:r.pm10,label:"현재",cur:true}]);
+  }else if(p&&p.ready){
+    $("striptitle").textContent="시간대별 미세먼지 (예측)";
+    const idx=[0,2,5,8,11,14,17,20,23].filter(i=>i<p.path.length);
+    bars(idx.map(i=>({value:p.path[i],label:`+${i+1}시간`,cur:i===p.path.length-1})));
+  }else bars([]);
+  document.querySelectorAll("#rows tr").forEach(tr=>tr.classList.toggle("sel",tr.dataset.st===SEL));
+}
+
+async function select(st){
+  SEL=st; PRED=null; $("pick").value=st; renderDetail();
+  try{PRED=await api("/air/predict?hours=24&station="+encodeURIComponent(st))}
+  catch(e){PRED={station:st,ready:false,message:"예측 서버에 연결할 수 없어요"}}
+  if(SEL===st) renderDetail();
+}
+
 async function load(){
   try{
-    const [s,l]=await Promise.all([
-      fetch(API_URL+"/air/summary").then(r=>r.json()),
-      fetch(API_URL+"/air/latest").then(r=>r.json())]);
-    $("summary").innerHTML=`측정소 <b>${s.stations}</b>곳 · 평균 PM10 <b>${s.avg_pm10??"-"}</b> ${badge(s.avg_pm10_grade)}`
-      +(s.mode==="demo"?" <small>(연습 데이터)</small>":"");
-    $("rows").innerHTML=l.map(r=>`<tr><td>${esc(r.station)}</td><td>${esc(r.time.slice(11))}</td>
-      <td>${r.pm10??"-"} ${badge(r.pm10_grade)}</td><td>${r.pm25??"-"} ${badge(r.pm25_grade)}</td>
-      <td><button data-st="${esc(r.station)}" data-h="1">1시간 뒤?</button> <button data-st="${esc(r.station)}" data-h="24">내일?</button></td></tr>`).join("");
-  }catch(e){$("summary").innerHTML=`<span class="err">서버에 연결할 수 없습니다: ${esc(e)}</span>`}
+    const [s,l]=await Promise.all([api("/air/summary"),api("/air/latest")]);
+    LATEST=l;
+    $("summary").innerHTML=`${s.stations}곳 · 평균 ${s.avg_pm10??"-"} ${badge(s.avg_pm10_grade)}`+(s.mode==="demo"?" <small>(연습)</small>":"");
+    $("pick").innerHTML=l.map(r=>`<option value="${esc(r.station)}">${esc(r.station)}</option>`).join("");
+    $("rows").innerHTML=l.map(r=>`<tr data-st="${esc(r.station)}"><td>${esc(r.station)}</td><td>${esc(r.time.slice(11,16))}</td>
+      <td>${r.pm10??"-"} ${badge(r.pm10_grade)}</td><td>${r.pm25??"-"} ${badge(r.pm25_grade)}</td></tr>`).join("");
+    const keep=l.find(r=>r.station===SEL)?SEL:(l.find(r=>r.station==="이도동")||l[0]||{}).station;
+    if(keep) select(keep); else $("title").textContent="데이터가 아직 없어요";
+  }catch(e){$("title").innerHTML=`<span class="err">서버에 연결할 수 없습니다: ${esc(e)}</span>`}
 }
-$("rows").addEventListener("click",async e=>{
-  const st=e.target.dataset.st; if(!st) return;
-  const h=e.target.dataset.h||1;
-  $("pred").hidden=false; $("pred").textContent="예측 중…";
-  $("pred").scrollIntoView({behavior:"smooth",block:"nearest"});
-  let p;
-  try{p=await fetch(API_URL+"/air/predict?hours="+h+"&station="+encodeURIComponent(st)).then(r=>r.json())}
-  catch(err){$("pred").textContent="서버에 연결할 수 없습니다: "+err; return}
-  $("pred").innerHTML=p.ready
-    ?`<b>${esc(p.station)}</b> ${p.hours==24?"내일 이 시간":p.hours+"시간 뒤"} PM10 약 <b>${p.next_pm10}</b> ${badge(p.next_grade)} <small>(${p.simple?`간단 추정 · 데이터 ${p.points}개 · 변동 ±${p.avg_error}`:`평균 오차 ±${p.avg_error}`})</small>`
-    :esc(p.message||p.detail);
-});
+$("pick").addEventListener("change",e=>select(e.target.value));
+$("rows").addEventListener("click",e=>{const tr=e.target.closest("tr"); if(tr){select(tr.dataset.st); scrollTo({top:0,behavior:"smooth"})}});
+document.querySelector(".tabs").addEventListener("click",e=>{const t=e.target.dataset.tab; if(t){TAB=t; renderDetail()}});
 load();
 </script>
 </body>
