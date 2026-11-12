@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>제주 미세먼지</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{--card:#fff;--ink:#222;--mute:#767676;--line:#e8e8e8;--brand:#1a9e5c;
         --c1:#2f80ed;--c2:#27ae60;--c3:#f2994a;--c4:#eb5757}
@@ -48,6 +49,10 @@
   th{color:var(--mute);font-weight:400;font-size:.8rem}
   tbody tr{cursor:pointer} tbody tr:hover{background:#fffbe0} tr.sel{background:#fff7bf}
   .g{color:#fff;border-radius:10px;padding:1px 8px;font-size:.78rem;white-space:nowrap}
+  #map{height:340px;border-radius:0 0 6px 6px;z-index:0}
+  .pin{display:flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:700;font-size:.78rem;
+       border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+  .pin.sel{outline:3px solid #3a2f00}
   .err{color:#d64545} small{color:var(--mute)}
   @media(max-width:520px){.side{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:12px}.num{font-size:2.8rem}}
 </style>
@@ -56,6 +61,11 @@
 <main>
   <header class="hero"><div class="flower" aria-hidden="true">🌼🌼🌼</div><h1>제주 <em>미세먼지</em></h1><p class="tag">오늘 제주 하늘은 어떨까요? 🌤️</p></header>
   <p class="sub">공공데이터 → FastAPI 가공 → Supabase 저장 → 화면 · 서버: <code id="api"></code></p>
+
+  <div class="card">
+    <div class="head">지도에서 지역 선택 <span class="time" id="mapnote">마커를 눌러 보세요</span></div>
+    <div id="map"></div>
+  </div>
 
   <div class="card" id="detail">
     <div class="head"><span id="title">불러오는 중…</span><select id="pick" aria-label="측정소 선택"></select><span class="time" id="when"></span></div>
@@ -72,6 +82,7 @@
     <table><thead><tr><th>측정소</th><th>시각</th><th>미세먼지</th><th>초미세먼지</th></tr></thead><tbody id="rows"></tbody></table>
   </div>
 </main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="config.js"></script>
 <script>
 const COLOR={좋음:"#2f80ed",보통:"#27ae60",나쁨:"#f2994a",매우나쁨:"#eb5757"};
@@ -87,7 +98,41 @@ function face(g,size){
     <circle cx="17" cy="20" r="3" fill="#fff"/><circle cx="33" cy="20" r="3" fill="#fff"/>
     <path d="${mouth}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`;
 }
-let LATEST=[], SEL=null, TAB="now", PRED=null;
+// 측정소 위치 (대략적인 위도·경도). 목록에 없는 측정소는 지도에 안 나오고 표에서만 보임.
+const COORDS={이도동:[33.5108,126.5300],연동:[33.4850,126.4910],노형동:[33.4800,126.4780],
+  동홍동:[33.2500,126.5700],고산리:[33.2930,126.1630],성산읍:[33.4580,126.9300],
+  한림읍:[33.4140,126.2650],애월읍:[33.4630,126.3300],조천읍:[33.5430,126.6370],
+  대정읍:[33.2260,126.2530],표선면:[33.3260,126.8300],서귀포:[33.2530,126.5600],
+  우도면:[33.5010,126.9510],구좌읍:[33.5140,126.8600],남원읍:[33.2790,126.7160],
+  안덕면:[33.2500,126.3600],한경면:[33.3450,126.1800],아라동:[33.4650,126.5450],
+  노형로:[33.4850,126.4780],제주항:[33.5190,126.5430],강정동:[33.2430,126.4800],
+  삼도동:[33.5120,126.5200],화북동:[33.5200,126.5700],외도동:[33.4900,126.4300]};
+let LATEST=[], SEL=null, TAB="now", PRED=null, MAP=null, MARKERS={};
+
+function initMap(){
+  if(MAP||typeof L==="undefined") return;
+  MAP=L.map("map",{scrollWheelZoom:false}).setView([33.38,126.55],9);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap"}).addTo(MAP);
+}
+function drawMarkers(){
+  initMap(); if(!MAP) return;
+  Object.values(MARKERS).forEach(m=>m.remove()); MARKERS={};
+  const missing=[];
+  LATEST.forEach(r=>{
+    const c=COORDS[r.station]; if(!c){missing.push(r.station); return}
+    const icon=L.divIcon({className:"",iconSize:[34,34],iconAnchor:[17,17],
+      html:`<div class="pin" data-st="${esc(r.station)}" style="width:34px;height:34px;background:${COLOR[r.pm10_grade]||"#999"}">${r.pm10??"-"}</div>`});
+    MARKERS[r.station]=L.marker(c,{icon,title:r.station}).addTo(MAP)
+      .bindTooltip(`${r.station} · 미세먼지 ${r.pm10??"-"} ${r.pm10_grade||""}`)
+      .on("click",()=>select(r.station));
+  });
+  $("mapnote").textContent=missing.length?`지도 위치 없는 측정소: ${missing.join(", ")}`:"마커를 눌러 보세요";
+  setTimeout(()=>MAP.invalidateSize(),0);
+}
+function markSelected(){
+  document.querySelectorAll(".pin").forEach(p=>p.classList.toggle("sel",p.dataset.st===SEL));
+  const c=COORDS[SEL]; if(MAP&&c) MAP.panTo(c);
+}
 $("api").textContent=window.API_URL;
 
 async function api(path){const r=await fetch(window.API_URL+path); if(!r.ok) throw new Error(r.status); return r.json()}
@@ -130,6 +175,7 @@ function renderDetail(){
     bars(idx.map(i=>({value:p.path[i],label:`+${i+1}시간`,cur:i===p.path.length-1})));
   }else bars([]);
   document.querySelectorAll("#rows tr").forEach(tr=>tr.classList.toggle("sel",tr.dataset.st===SEL));
+  markSelected();
 }
 
 async function select(st){
@@ -147,6 +193,7 @@ async function load(){
     $("pick").innerHTML=l.map(r=>`<option value="${esc(r.station)}">${esc(r.station)}</option>`).join("");
     $("rows").innerHTML=l.map(r=>`<tr data-st="${esc(r.station)}"><td>${esc(r.station)}</td><td>${esc(r.time.slice(11,16))}</td>
       <td>${r.pm10??"-"} ${badge(r.pm10_grade)}</td><td>${r.pm25??"-"} ${badge(r.pm25_grade)}</td></tr>`).join("");
+    drawMarkers();
     const keep=l.find(r=>r.station===SEL)?SEL:(l.find(r=>r.station==="이도동")||l[0]||{}).station;
     if(keep) select(keep); else $("title").textContent="데이터가 아직 없어요";
   }catch(e){$("title").innerHTML=`<span class="err">서버에 연결할 수 없습니다: ${esc(e)}</span>`}
